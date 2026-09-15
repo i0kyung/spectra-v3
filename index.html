@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SPECTRA — 인터랙션 레이어 프로토타입</title>
+    <style>:root{--sig:#63e6ff;--ink:#0c0a1b;--ink2:#171233;--ink3:#241c47;--line:#ffffff1a;--text:#e9e6f5;--dim:#8e88a8;--panel:#0e0b1ee6;--warn:#ffb84d;--bad:#ff6b7a;--font:"Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Malgun Gothic", "Noto Sans KR", sans-serif}*{box-sizing:border-box}html,body{height:100%;margin:0}body{background:var(--ink);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow:hidden}#stage{justify-content:center;align-items:flex-end;display:flex;position:fixed;inset:0;overflow:hidden}#beam{opacity:0;pointer-events:none;background:linear-gradient(180deg, color-mix(in srgb, var(--sig) 15%, transparent) 0%, transparent 46%);transition:opacity 1s;position:absolute;inset:0}#glow{opacity:0;filter:blur(46px);pointer-events:none;background:radial-gradient(circle, var(--sig) 0%, transparent 62%);border-radius:50%;width:min(150vh,150vw);height:min(150vh,150vw);transition:opacity 1.1s,transform 1.1s cubic-bezier(.2,.8,.3,1);position:absolute;top:46%;left:50%;transform:translate(-50%,-50%)scale(.6)}#charMount{z-index:2;justify-content:center;align-items:flex-end;width:100%;height:100%;display:flex;position:relative}body.lit #glow{opacity:.2;transform:translate(-50%,-50%)scale(1)}body.peak #glow{opacity:.32}body.lit #beam{opacity:1}#caption{z-index:5;text-align:center;opacity:0;text-shadow:0 2px 24px #000000d9;pointer-events:none;max-width:min(560px,86vw);font-size:clamp(15px,2.1vh,21px);line-height:1.5;transition:opacity .5s;position:fixed;bottom:max(3vh,20px);left:50%;transform:translate(-50%)}#caption.on{opacity:.92}#credit{z-index:6;color:var(--dim);border:1px solid var(--line);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none;background:#0a091880;border-radius:20px;padding:4px 11px;font-size:11px;position:fixed;bottom:12px;left:14px}#credit b{color:var(--text);font-weight:600}#err{z-index:30;background:var(--panel);border:1px solid var(--bad);text-align:center;border-radius:14px;max-width:min(520px,88vw);padding:20px 22px;line-height:1.6;display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)}#err.on{display:block}#err b{color:var(--bad)}#hud{z-index:10;background:var(--panel);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:14px;width:320px;max-height:calc(100vh - 32px);padding:15px;transition:opacity .3s,transform .3s;position:fixed;top:16px;right:16px;overflow:auto}#hud.hidden{opacity:0;pointer-events:none;transform:translate(16px)}#hud h1{letter-spacing:.16em;margin:0;font-size:14px}.sub{color:var(--dim);margin:3px 0 12px;font-size:11px;line-height:1.5}.badges{flex-wrap:wrap;gap:6px;margin-bottom:4px;display:flex}.badge{border:1px solid var(--line);color:var(--dim);border-radius:20px;padding:3px 8px;font-size:10.5px}.badge.cam{color:var(--sig);border-color:var(--sig)}.badge.sim{color:var(--warn);border-color:var(--warn)}.badge.test{color:var(--bad);border-color:var(--bad)}.block{border-top:1px solid var(--line);margin-top:13px;padding-top:12px}.blabel{color:var(--dim);letter-spacing:.04em;margin:0 0 8px;font-size:10.5px}.ladder{grid-template-columns:1fr 1fr;gap:2px;margin:0;padding:0;list-style:none;display:grid}.ladder li{color:var(--dim);border-radius:6px;align-items:center;gap:6px;padding:4px 7px;font-size:11.5px;display:flex}.ladder li .en{opacity:.5;margin-left:auto;font-size:9px}.ladder li.active{background:color-mix(in srgb, var(--sig) 16%, transparent);color:#fff}.preview{aspect-ratio:4/3;background:#000;border-radius:9px;margin-top:8px;position:relative;overflow:hidden}.preview video{object-fit:cover;width:100%;height:100%;position:absolute;inset:0;transform:scaleX(-1)}.preview canvas{touch-action:none;width:100%;height:100%;position:absolute;inset:0}.preview .flag{color:var(--dim);background:#0009;border-radius:20px;padding:2px 7px;font-size:10px;position:absolute;top:6px;left:6px}.meters{gap:5px;margin-top:8px;display:grid}.meter{color:var(--dim);align-items:center;gap:8px;font-size:10.5px;display:flex}.meter span:first-child{flex:none;width:58px}.bar{background:#ffffff17;border-radius:3px;flex:1;height:4px;overflow:hidden}.bar i{background:var(--sig);width:0;height:100%;display:block}.meter .val{text-align:right;font-variant-numeric:tabular-nums;width:34px}.row{flex-wrap:wrap;gap:6px;display:flex}button{color:var(--text);background:var(--ink3);border:1px solid var(--line);cursor:pointer;border-radius:8px;padding:6px 10px;font-family:inherit;font-size:11.5px}button:hover{background:#2c2456}button.on{background:var(--sig);color:#0c0a1b;border-color:var(--sig);font-weight:600}button:focus-visible{outline:2px solid var(--sig);outline-offset:2px}label.ctl{color:var(--dim);justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:11px;display:flex}label.ctl input[type=range]{width:150px;accent-color:var(--sig)}.swatches{gap:7px;display:flex}.sw{cursor:pointer;border:2px solid #0000;border-radius:50%;width:24px;height:24px;padding:0}.sw.on{border-color:#fff}.toggle{color:var(--dim);cursor:pointer;align-items:center;gap:6px;font-size:11px;display:flex}.hint{color:var(--dim);margin:8px 0 0;font-size:10.5px;line-height:1.6}.hint kbd{background:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:10px}.stat{color:var(--dim);font-variant-numeric:tabular-nums;justify-content:space-between;font-size:10.5px;display:flex}.toast{z-index:20;background:var(--panel);border:1px solid var(--line);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:11px;max-width:min(560px,92vw);padding:12px 15px;font-size:12px;line-height:1.6;display:none;position:fixed;top:16px;left:50%;transform:translate(-50%)}.toast.on{display:block}.toast b{color:var(--sig)}@media (max-width:720px){#hud{width:auto;top:8px;left:8px;right:8px}}</style>
+    <script type="module" crossorigin src="./assets/index-Bbhe45Kb.js"></script>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="beam"></div>
+      <div id="glow"></div>
+      <div id="charMount"></div>
+    </div>
+    <p id="caption"></p>
+    <div id="credit">캐릭터 <b>서윤</b> · 게임 <b>VELO</b> (게임사 허락 하에 사용)</div>
+
+    <div id="err">
+      <p><b id="errTitle">카메라 오류</b></p>
+      <p id="errMsg"></p>
+      <div class="row" style="justify-content: center">
+        <button id="errRetry">다시 시작</button>
+        <button id="errSim">시뮬레이션으로 전환</button>
+      </div>
+    </div>
+
+    <aside id="hud">
+      <div class="badges">
+        <span class="badge" id="bMode">모드</span>
+        <span class="badge" id="bAdapter">렌더러</span>
+        <span class="badge" id="bSource"></span>
+        <span class="badge" id="bVer">v3</span>
+      </div>
+      <h1>SPECTRA</h1>
+      <p class="sub">인터랙션 레이어 프로토타입 · 웹캠 1대 · 캐릭터 1종</p>
+
+      <div class="block" style="border-top: 0; padding-top: 0">
+        <p class="blabel">캐릭터 상태</p>
+        <ul class="ladder" id="ladder">
+          <li data-s="IDLE">대기<span class="en">IDLE</span></li>
+          <li data-s="ACQUIRING">대상탐색<span class="en">ACQUIRING</span></li>
+          <li data-s="GREETING">인사<span class="en">GREETING</span></li>
+          <li data-s="ENGAGED">바라봄<span class="en">ENGAGED</span></li>
+          <li data-s="HIGH_FIVE">하이파이브<span class="en">HIGH_FIVE</span></li>
+          <li data-s="LOST_GRACE">놓침유예<span class="en">LOST_GRACE</span></li>
+          <li data-s="FAREWELL">배웅<span class="en">FAREWELL</span></li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <p class="blabel">입력</p>
+        <div class="row">
+          <button id="btnCam">카메라 시작</button>
+          <button id="btnStop">정지</button>
+          <button id="btnSim" class="on">시뮬레이션</button>
+        </div>
+        <div class="row" style="margin-top: 6px">
+          <select id="scenSel" style="flex:1;font-family:inherit;font-size:11.5px;color:var(--text);background:var(--ink3);border:1px solid var(--line);border-radius:8px;padding:6px"></select>
+          <button id="btnScen">시나리오 재생</button>
+        </div>
+        <div class="preview">
+          <video id="preview" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <span class="flag" id="flag">시뮬레이션</span>
+        </div>
+        <p class="hint" id="roiHint">미리보기 위에서 드래그하면 <b>체험 ROI</b>를 다시 그립니다.</p>
+        <div class="meters">
+          <div class="meter"><span>대상 크기</span><span class="bar"><i id="mArea"></i></span><span class="val" id="vArea">0%</span></div>
+          <div class="meter"><span>거리(상대)</span><span class="bar"><i id="mProx"></i></span><span class="val" id="vProx">0%</span></div>
+          <div class="meter"><span>손 열림</span><span class="bar"><i id="mHand"></i></span><span class="val" id="vHand">0%</span></div>
+          <div class="meter"><span>선택 진행</span><span class="bar"><i id="mDwell"></i></span><span class="val" id="vDwell">0%</span></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">시선 보정 (카메라·시뮬 공통)</p>
+        <label class="toggle"><input type="checkbox" id="flipX" checked /> 좌우 반전</label>
+        <label class="toggle"><input type="checkbox" id="flipY" /> 상하 반전</label>
+        <label class="ctl">시선 반응 <input type="range" id="gain" min="0.5" max="2.5" step="0.05" /></label>
+        <label class="ctl">떨림 무시 <input type="range" id="dead" min="0" max="0.08" step="0.005" /></label>
+        <label class="ctl">부드러움 <input type="range" id="smooth" min="40" max="400" step="10" /></label>
+        <p class="hint">‘화면 오른쪽으로 이동 → 어느 쪽을 보는지’를 시뮬레이션/카메라로 확인하며 반전·반응을 맞추세요.</p>
+        <div class="row" style="margin-top:4px">
+          <button id="wizStart">보정 도우미</button>
+          <span class="badge" id="wizArrow" style="min-width:34px;text-align:center">·</span>
+        </div>
+        <p class="hint" id="wizMsg" hidden></p>
+      </div>
+
+      <div class="block">
+        <p class="blabel">근접 (상대) · 임계값</p>
+        <label class="ctl">가까움 진입 <input type="range" id="nearEnter" min="0.1" max="0.6" step="0.01" /></label>
+        <label class="ctl">가까움 이탈 <input type="range" id="nearExit" min="0.08" max="0.55" step="0.01" /></label>
+      </div>
+
+      <div class="block">
+        <p class="blabel">v2 인식·연출 옵션</p>
+        <label class="toggle"><input type="checkbox" id="optPose" /> 포즈 결합(손 귀속 정확도 ↑, 부하 ↑)</label>
+        <label class="toggle"><input type="checkbox" id="optPredict" checked /> 예측 추적(교차 시 ID 안정)</label>
+        <label class="toggle"><input type="checkbox" id="optParticles" checked /> 하이파이브 파티클</label>
+        <p class="hint" id="workerNote">인식 처리: 확인 중…</p>
+      </div>
+
+      <div class="block">
+        <p class="blabel">타이밍 (초기 조정값)</p>
+        <label class="ctl">선택 대기 <input type="range" id="dwell" min="200" max="2000" step="50" /></label>
+        <label class="ctl">놓침 유예 <input type="range" id="grace" min="400" max="4000" step="100" /></label>
+        <label class="ctl">하이파이브 유지 <input type="range" id="hfHold" min="100" max="1200" step="50" /></label>
+        <label class="ctl">하이파이브 쿨다운 <input type="range" id="hfCool" min="500" max="6000" step="100" /></label>
+      </div>
+
+      <div class="block">
+        <p class="blabel">렌더러 / 표정</p>
+        <div class="row">
+          <button id="adSprite" class="on">영상(서윤)</button>
+          <button id="adGlyph">테스트글리프</button>
+        </div>
+        <div class="row" id="emo" style="margin-top: 7px">
+          <button data-e="auto" class="on">자동</button>
+          <button data-e="happy">웃음</button>
+          <button data-e="playful">장난</button>
+          <button data-e="sad">시무룩</button>
+          <button data-e="cry">울음</button>
+          <button data-e="angry">삐짐</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">시그니처 컬러 — 태그 인식 시 공간 조명(시연)</p>
+        <div class="swatches" id="sw">
+          <button class="sw on" data-c="#63E6FF" style="background: #63e6ff" aria-label="시안"></button>
+          <button class="sw" data-c="#FF7AC8" style="background: #ff7ac8" aria-label="핑크"></button>
+          <button class="sw" data-c="#A77BFF" style="background: #a77bff" aria-label="퍼플"></button>
+          <button class="sw" data-c="#B8FF5C" style="background: #b8ff5c" aria-label="라임"></button>
+          <button class="sw" data-c="#FFB84D" style="background: #ffb84d" aria-label="앰버"></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">익명 이벤트 (로컬 · 기본 꺼짐)</p>
+        <label class="toggle"><input type="checkbox" id="evEnable" /> 집계 사용</label>
+        <label class="ctl">보관 기간(일) <input type="range" id="evRet" min="1" max="30" step="1" /></label>
+        <div class="stat"><span>익명 세션 수(방문자 수 아님)</span><span id="evCount">0</span></div>
+        <div class="stat"><span>하이파이브 / 평균 체험(초)</span><span id="evSummary">0 / 0</span></div>
+        <div class="row" style="margin-top: 7px">
+          <button id="evJson">JSON</button>
+          <button id="evCsv">CSV</button>
+          <button id="evClear">전체 삭제</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="stat"><span>상태 / 시스템</span><span id="mState">IDLE / OK</span></div>
+        <div class="stat"><span>렌더 FPS</span><span id="mRfps">0</span></div>
+        <div class="stat"><span>인식 FPS</span><span id="mDfps">0</span></div>
+        <div class="stat"><span>인식 지연 (capture→detect)</span><span id="mLat">0 ms</span></div>
+        <div class="stat"><span>파이프라인 지연 (→표시)</span><span id="mPipe">0 ms</span></div>
+        <div class="stat"><span>얼굴 / 손 / 포즈</span><span id="mFH">0 / 0 / 0</span></div>
+        <div class="stat"><span>가동 시간</span><span id="mUp">0:00</span></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <div style="flex:1"><div class="blabel" style="margin:0">렌더 FPS</div><canvas id="spF" width="140" height="34" style="width:100%;height:34px"></canvas></div>
+          <div style="flex:1"><div class="blabel" style="margin:0">인식 지연(ms)</div><canvas id="spL" width="140" height="34" style="width:100%;height:34px"></canvas></div>
+        </div>
+        <div class="row" style="margin-top: 9px">
+          <button id="btnSave">설정 저장</button>
+          <button id="btnReset">초기화</button>
+          <button id="btnPresent">발표 모드</button>
+        </div>
+        <p class="hint"><kbd>F</kbd> 발표 모드 · <kbd>Space</kbd> 시뮬 하이파이브(누르는 동안 손) · <kbd>C</kbd> 카메라</p>
+      </div>
+    </aside>
+
+    <div class="toast" id="toast"></div>
+  </body>
+</html>
