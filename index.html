@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>SPECTRA — 인터랙션 레이어 프로토타입</title>
+    <style>
+      :root {
+        --sig: #12b6c9;
+        --sig-soft: #63e6ff;
+        --ink: #f7f8fa;
+        --ink2: #eef0f4;
+        --ink3: #e6e9ef;
+        --line: rgba(20, 22, 40, 0.1);
+        --text: #16161d;
+        --dim: #6b6b7b;
+        --panel: rgba(255, 255, 255, 0.86);
+        --warn: #e08a1e;
+        --bad: #e0475a;
+        --font: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body { background: var(--ink); color: var(--text); font-family: var(--font); overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+      /* ---------- viewer (light stage — blends with the white-bg video) ---------- */
+      #stage { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; overflow: hidden;
+        background: radial-gradient(120% 90% at 50% 8%, #ffffff 0%, #eef1f6 62%, #e7ebf2 100%); }
+      #beam { display: none; }
+      /* soft floor shadow to ground the character on white */
+      #glow { position: absolute; left: 50%; bottom: 4vh; width: min(46vh, 70vw); height: 9vh;
+        transform: translateX(-50%) scaleY(0.5); border-radius: 50%; opacity: 0; filter: blur(24px); pointer-events: none;
+        background: radial-gradient(ellipse, rgba(30, 40, 70, 0.28) 0%, transparent 70%); transition: opacity 0.8s ease; }
+      #charMount { position: relative; z-index: 2; height: 100%; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+      body.lit #glow { opacity: 1; }
+      #caption { position: fixed; left: 50%; bottom: max(3vh, 20px); transform: translateX(-50%); z-index: 5; text-align: center;
+        font-size: clamp(15px, 2.1vh, 21px); opacity: 0; transition: opacity 0.5s ease; color: #2a2740;
+        pointer-events: none; max-width: min(560px, 86vw); line-height: 1.5; font-weight: 600; }
+      #caption.on { opacity: 0.9; }
+      #credit { position: fixed; left: 14px; bottom: 12px; z-index: 6; font-size: 11px; color: #6b6784;
+        background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 20px; padding: 4px 11px;
+        backdrop-filter: blur(6px); pointer-events: none; }
+      #credit b { color: #1c1a2b; font-weight: 700; }
+
+      /* recognition status pill (top-center) */
+      #recog { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 600; color: #3a3a4a; background: rgba(255, 255, 255, 0.82); border: 1px solid var(--line);
+        border-radius: 999px; padding: 7px 15px; box-shadow: 0 6px 18px rgba(30, 40, 70, 0.1); backdrop-filter: blur(8px);
+        transition: opacity 0.3s ease, transform 0.3s ease; }
+      #recog .dot { width: 9px; height: 9px; border-radius: 50%; background: #b8bcc8; transition: background 0.3s ease; }
+      #recog.live .dot { background: var(--sig); box-shadow: 0 0 0 0 rgba(18, 182, 201, 0.5); animation: pulse 1.6s infinite; }
+      #recog.hot { color: #0a6b76; border-color: rgba(18, 182, 201, 0.5); }
+      #recog.hot .dot { background: var(--sig); }
+      @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(18, 182, 201, 0.45); } 70% { box-shadow: 0 0 0 9px rgba(18, 182, 201, 0); } 100% { box-shadow: 0 0 0 0 rgba(18, 182, 201, 0); } }
+
+      /* hand indicator (bottom-center) */
+      #handchip { position: fixed; left: 50%; bottom: 54px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 10px;
+        font-size: 13px; font-weight: 600; color: #4a4a5a; background: rgba(255, 255, 255, 0.9); border: 1px solid var(--line);
+        border-radius: 999px; padding: 8px 16px; box-shadow: 0 8px 22px rgba(30, 40, 70, 0.12); transition: all 0.25s ease; }
+      #handchip .hand { font-size: 20px; transition: transform 0.15s ease; transform-origin: 60% 90%; }
+      #handchip.detect { color: #0a6b76; border-color: rgba(18, 182, 201, 0.55); }
+      #handchip.detect .hand { animation: wave 0.9s ease-in-out infinite; }
+      #handchip.fire { color: #fff; background: var(--sig); border-color: var(--sig); transform: translateX(-50%) scale(1.12); }
+      @keyframes wave { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(12deg); } }
+      #handchip .hp { width: 46px; height: 6px; border-radius: 4px; background: rgba(20, 22, 40, 0.1); overflow: hidden; }
+      #handchip .hp i { display: block; height: 100%; width: 0; background: var(--sig); transition: width 0.12s linear; }
+
+      /* camera-error banner (system state) */
+      #err { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 30; display: none;
+        max-width: min(520px, 88vw); background: var(--panel); border: 1px solid var(--bad); border-radius: 14px; padding: 20px 22px;
+        text-align: center; line-height: 1.6; }
+      #err.on { display: block; }
+      #err b { color: var(--bad); }
+
+      /* ---------- operator panel ---------- */
+      #hud { position: fixed; right: 16px; top: 16px; width: 320px; max-height: calc(100vh - 32px); overflow: auto; z-index: 10;
+        background: var(--panel); border: 1px solid var(--line); border-radius: 16px; backdrop-filter: blur(16px); padding: 16px;
+        box-shadow: 0 18px 50px rgba(20, 30, 60, 0.14), 0 2px 8px rgba(20, 30, 60, 0.06);
+        transition: opacity 0.35s cubic-bezier(0.2, 0.8, 0.3, 1), transform 0.35s cubic-bezier(0.2, 0.8, 0.3, 1); }
+      #hud.hidden { opacity: 0; transform: translateX(16px); pointer-events: none; }
+      #hud h1 { margin: 0; font-size: 14px; letter-spacing: 0.16em; }
+      .sub { margin: 3px 0 12px; font-size: 11px; color: var(--dim); line-height: 1.5; }
+      .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+      .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 20px; border: 1px solid var(--line); color: var(--dim); }
+      .badge.cam { color: var(--sig); border-color: var(--sig); }
+      .badge.sim { color: var(--warn); border-color: var(--warn); }
+      .badge.test { color: var(--bad); border-color: var(--bad); }
+      .block { margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--line); }
+      .blabel { font-size: 10.5px; color: var(--dim); margin: 0 0 8px; letter-spacing: 0.04em; }
+      .ladder { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+      .ladder li { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 8px; font-size: 11.5px; color: var(--dim);
+        transition: background 0.25s ease, color 0.25s ease; }
+      .ladder li .en { margin-left: auto; font-size: 9px; opacity: 0.5; }
+      .ladder li.active { background: color-mix(in srgb, var(--sig) 14%, transparent); color: #0a6b76; font-weight: 700;
+        box-shadow: inset 2px 0 0 var(--sig); }
+      .preview { position: relative; border-radius: 9px; overflow: hidden; background: #000; margin-top: 8px; aspect-ratio: 4/3; }
+      .preview video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+      .preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+      .preview .flag { position: absolute; left: 6px; top: 6px; font-size: 10px; padding: 2px 7px; border-radius: 20px; background: rgba(0, 0, 0, 0.6); color: var(--dim); }
+      .meters { margin-top: 8px; display: grid; gap: 5px; }
+      .meter { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--dim); }
+      .meter span:first-child { width: 58px; flex: none; }
+      .bar { flex: 1; height: 5px; border-radius: 3px; background: rgba(20, 22, 40, 0.09); overflow: hidden; }
+      .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--sig), var(--sig-soft)); transition: width 0.15s ease; }
+      .meter .val { width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; }
+      button { font-family: inherit; font-size: 11.5px; color: var(--text); background: var(--ink3); border: 1px solid var(--line);
+        border-radius: 9px; padding: 7px 11px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease; }
+      button:hover { background: var(--ink2); border-color: rgba(18, 182, 201, 0.4); transform: translateY(-1px); }
+      button.on { background: var(--sig); color: #ffffff; border-color: var(--sig); font-weight: 700;
+        box-shadow: 0 6px 16px rgba(18, 182, 201, 0.28); }
+      button:focus-visible { outline: 2px solid var(--sig); outline-offset: 2px; }
+      label.ctl { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); margin: 6px 0; }
+      label.ctl input[type='range'] { width: 150px; accent-color: var(--sig); }
+      .swatches { display: flex; gap: 7px; }
+      .sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; padding: 0; cursor: pointer; }
+      .sw.on { border-color: var(--text); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9); }
+      .toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); cursor: pointer; }
+      .hint { font-size: 10.5px; color: var(--dim); line-height: 1.6; margin: 8px 0 0; }
+      .hint kbd { background: var(--ink3); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 10px; }
+      .stat { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+      .toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 20; max-width: min(560px, 92vw);
+        background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 12px 15px; font-size: 12px; line-height: 1.6;
+        backdrop-filter: blur(14px); display: none; }
+      .toast.on { display: block; }
+      .toast b { color: var(--sig); }
+      @media (max-width: 720px) { #hud { right: 8px; left: 8px; top: 8px; width: auto; } }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <div id="beam"></div>
+      <div id="glow"></div>
+      <div id="charMount"></div>
+    </div>
+    <p id="caption"></p>
+
+    <!-- recognition status (top) + hand indicator (bottom) -->
+    <div id="recog"><span class="dot"></span><span id="recogText">대기 중</span></div>
+    <div id="handchip" hidden>
+      <span class="hand" id="handIcon">✋</span>
+      <span id="handText">손을 들어 하이파이브</span>
+      <span class="hp"><i id="handProg"></i></span>
+    </div>
+
+    <div id="credit">캐릭터 <b>서윤</b> · 게임 <b>VELO</b> (게임사 허락 하에 사용)</div>
+
+    <div id="err">
+      <p><b id="errTitle">카메라 오류</b></p>
+      <p id="errMsg"></p>
+      <div class="row" style="justify-content: center">
+        <button id="errRetry">다시 시작</button>
+        <button id="errSim">시뮬레이션으로 전환</button>
+      </div>
+    </div>
+
+    <aside id="hud">
+      <div class="badges">
+        <span class="badge" id="bMode">모드</span>
+        <span class="badge" id="bAdapter">렌더러</span>
+        <span class="badge" id="bSource"></span>
+        <span class="badge" id="bVer">v1.2</span>
+      </div>
+      <h1>SPECTRA</h1>
+      <p class="sub">인터랙션 레이어 프로토타입 · 웹캠 1대 · 캐릭터 1종</p>
+
+      <div class="block" style="border-top: 0; padding-top: 0">
+        <p class="blabel">캐릭터 상태</p>
+        <ul class="ladder" id="ladder">
+          <li data-s="IDLE">대기<span class="en">IDLE</span></li>
+          <li data-s="ACQUIRING">대상탐색<span class="en">ACQUIRING</span></li>
+          <li data-s="GREETING">인사<span class="en">GREETING</span></li>
+          <li data-s="ENGAGED">바라봄<span class="en">ENGAGED</span></li>
+          <li data-s="HIGH_FIVE">하이파이브<span class="en">HIGH_FIVE</span></li>
+          <li data-s="LOST_GRACE">놓침유예<span class="en">LOST_GRACE</span></li>
+          <li data-s="FAREWELL">배웅<span class="en">FAREWELL</span></li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <p class="blabel">입력</p>
+        <div class="row">
+          <button id="btnCam">카메라 시작</button>
+          <button id="btnStop">정지</button>
+          <button id="btnSim" class="on">시뮬레이션</button>
+        </div>
+        <div class="row" style="margin-top: 6px">
+          <select id="scenSel" style="flex:1;font-family:inherit;font-size:11.5px;color:var(--text);background:var(--ink3);border:1px solid var(--line);border-radius:8px;padding:6px"></select>
+          <button id="btnScen">시나리오 재생</button>
+        </div>
+        <div class="preview">
+          <video id="preview" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <span class="flag" id="flag">시뮬레이션</span>
+        </div>
+        <p class="hint" id="roiHint">미리보기 위에서 드래그하면 <b>체험 ROI</b>를 다시 그립니다.</p>
+        <div class="meters">
+          <div class="meter"><span>대상 크기</span><span class="bar"><i id="mArea"></i></span><span class="val" id="vArea">0%</span></div>
+          <div class="meter"><span>거리(상대)</span><span class="bar"><i id="mProx"></i></span><span class="val" id="vProx">0%</span></div>
+          <div class="meter"><span>손 열림</span><span class="bar"><i id="mHand"></i></span><span class="val" id="vHand">0%</span></div>
+          <div class="meter"><span>선택 진행</span><span class="bar"><i id="mDwell"></i></span><span class="val" id="vDwell">0%</span></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">시선 보정 (카메라·시뮬 공통)</p>
+        <label class="toggle"><input type="checkbox" id="flipX" checked /> 좌우 반전</label>
+        <label class="toggle"><input type="checkbox" id="flipY" /> 상하 반전</label>
+        <label class="ctl">시선 반응 <input type="range" id="gain" min="0.5" max="2.5" step="0.05" /></label>
+        <label class="ctl">떨림 무시 <input type="range" id="dead" min="0" max="0.08" step="0.005" /></label>
+        <label class="ctl">부드러움 <input type="range" id="smooth" min="40" max="400" step="10" /></label>
+        <p class="hint">‘화면 오른쪽으로 이동 → 어느 쪽을 보는지’를 시뮬레이션/카메라로 확인하며 반전·반응을 맞추세요.</p>
+        <div class="row" style="margin-top:4px">
+          <button id="wizStart">보정 도우미</button>
+          <span class="badge" id="wizArrow" style="min-width:34px;text-align:center">·</span>
+        </div>
+        <p class="hint" id="wizMsg" hidden></p>
+      </div>
+
+      <div class="block">
+        <p class="blabel">근접 (상대) · 임계값</p>
+        <label class="ctl">가까움 진입 <input type="range" id="nearEnter" min="0.1" max="0.6" step="0.01" /></label>
+        <label class="ctl">가까움 이탈 <input type="range" id="nearExit" min="0.08" max="0.55" step="0.01" /></label>
+      </div>
+
+      <div class="block">
+        <p class="blabel">v2 인식·연출 옵션</p>
+        <label class="toggle"><input type="checkbox" id="optPose" /> 포즈 결합(손 귀속 정확도 ↑, 부하 ↑)</label>
+        <label class="toggle"><input type="checkbox" id="optPredict" checked /> 예측 추적(교차 시 ID 안정)</label>
+        <label class="toggle"><input type="checkbox" id="optParticles" checked /> 하이파이브 파티클</label>
+        <p class="hint" id="workerNote">인식 처리: 확인 중…</p>
+      </div>
+
+      <div class="block">
+        <p class="blabel">타이밍 (초기 조정값)</p>
+        <label class="ctl">선택 대기 <input type="range" id="dwell" min="200" max="2000" step="50" /></label>
+        <label class="ctl">놓침 유예 <input type="range" id="grace" min="400" max="4000" step="100" /></label>
+        <label class="ctl">하이파이브 유지 <input type="range" id="hfHold" min="100" max="1200" step="50" /></label>
+        <label class="ctl">하이파이브 쿨다운 <input type="range" id="hfCool" min="500" max="6000" step="100" /></label>
+      </div>
+
+      <div class="block">
+        <p class="blabel">렌더러 / 표정</p>
+        <div class="row">
+          <button id="adSprite" class="on">이미지(서윤)</button>
+          <button id="adGlyph">테스트글리프</button>
+        </div>
+        <div class="row" id="emo" style="margin-top: 7px">
+          <button data-e="auto" class="on">자동</button>
+          <button data-e="happy">웃음</button>
+          <button data-e="playful">장난</button>
+          <button data-e="sad">시무룩</button>
+          <button data-e="cry">울음</button>
+          <button data-e="angry">삐짐</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">시그니처 컬러 — 태그 인식 시 공간 조명(시연)</p>
+        <div class="swatches" id="sw">
+          <button class="sw on" data-c="#63E6FF" style="background: #63e6ff" aria-label="시안"></button>
+          <button class="sw" data-c="#FF7AC8" style="background: #ff7ac8" aria-label="핑크"></button>
+          <button class="sw" data-c="#A77BFF" style="background: #a77bff" aria-label="퍼플"></button>
+          <button class="sw" data-c="#B8FF5C" style="background: #b8ff5c" aria-label="라임"></button>
+          <button class="sw" data-c="#FFB84D" style="background: #ffb84d" aria-label="앰버"></button>
+        </div>
+      </div>
+
+      <div class="block">
+        <p class="blabel">익명 이벤트 (로컬 · 기본 꺼짐)</p>
+        <label class="toggle"><input type="checkbox" id="evEnable" /> 집계 사용</label>
+        <label class="ctl">보관 기간(일) <input type="range" id="evRet" min="1" max="30" step="1" /></label>
+        <div class="stat"><span>익명 세션 수(방문자 수 아님)</span><span id="evCount">0</span></div>
+        <div class="stat"><span>하이파이브 / 평균 체험(초)</span><span id="evSummary">0 / 0</span></div>
+        <div class="row" style="margin-top: 7px">
+          <button id="evJson">JSON</button>
+          <button id="evCsv">CSV</button>
+          <button id="evClear">전체 삭제</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="stat"><span>상태 / 시스템</span><span id="mState">IDLE / OK</span></div>
+        <div class="stat"><span>렌더 FPS</span><span id="mRfps">0</span></div>
+        <div class="stat"><span>인식 FPS</span><span id="mDfps">0</span></div>
+        <div class="stat"><span>인식 지연 (capture→detect)</span><span id="mLat">0 ms</span></div>
+        <div class="stat"><span>파이프라인 지연 (→표시)</span><span id="mPipe">0 ms</span></div>
+        <div class="stat"><span>얼굴 / 손 / 포즈</span><span id="mFH">0 / 0 / 0</span></div>
+        <div class="stat"><span>가동 시간</span><span id="mUp">0:00</span></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <div style="flex:1"><div class="blabel" style="margin:0">렌더 FPS</div><canvas id="spF" width="140" height="34" style="width:100%;height:34px"></canvas></div>
+          <div style="flex:1"><div class="blabel" style="margin:0">인식 지연(ms)</div><canvas id="spL" width="140" height="34" style="width:100%;height:34px"></canvas></div>
+        </div>
+        <div class="row" style="margin-top: 9px">
+          <button id="btnSave">설정 저장</button>
+          <button id="btnReset">초기화</button>
+          <button id="btnPresent">발표 모드</button>
+        </div>
+        <p class="hint"><kbd>F</kbd> 발표 모드 · <kbd>Space</kbd> 시뮬 하이파이브(누르는 동안 손) · <kbd>C</kbd> 카메라</p>
+      </div>
+    </aside>
+
+    <div class="toast" id="toast"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

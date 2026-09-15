@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# vendored at install/build time by scripts/fetch-models.mjs (do not commit binaries)
+public/wasm/
+public/models/
+
+# logs / os
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# NOTE: character art under public/assets/characters/** IS committed — it is the
+# reused sprite set and is small enough to track.

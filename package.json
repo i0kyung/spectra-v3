@@ -1,0 +1,28 @@
+{
+  "name": "spectra-mvp",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "description": "SPECTRA — 공간 인터랙션 레이어 프로토타입 (v1.2, 이미지 캐릭터)",
+  "scripts": {
+    "predev": "node scripts/fetch-models.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/fetch-models.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fetch:models": "node scripts/fetch-models.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@mediapipe/tasks-vision": "1.0.1"
+  },
+  "devDependencies": {
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
+  }
+}
